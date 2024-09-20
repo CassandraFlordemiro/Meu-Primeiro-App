@@ -1,76 +1,58 @@
 import fs from 'fs';
 import { parse } from 'csv-parse';
-import { stringify } from 'csv-stringify';
-import fetch from 'node-fetch';
-import chalk from 'chalk';  // Usa import para o chalk
+import axios from 'axios';
+import chalk from 'chalk';
 
-// Função para adicionar um delay
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+// Define o caminho correto para o arquivo CSV
+const filePath = './input.csv';
 
-// Função para buscar bairro por CEP
-const buscarBairro = async (cep) => {
-    const url = `https://viacep.com.br/ws/${cep}/json/`;
+// Variável para controlar o número máximo de erros consecutivos permitidos
+const MAX_ERROS_CONSECUTIVOS = 5;
+let contadorErrosConsecutivos = 0;
+
+// Função para buscar o CEP
+async function buscarCep(cep) {
     try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error('Resposta da API não OK');
+        const response = await axios.get(`https://viacep.com.br/ws/${cep}/json/`);
+        if (response.data.erro) {
+            console.log(chalk.red(`CEP: ${cep} não encontrado.`));
+            return { cep, bairro: 'CEP não encontrado' };
         }
-        const data = await response.json();
-        return data.bairro || 'Não encontrado';
+        contadorErrosConsecutivos = 0;  // Reseta o contador de erros quando a busca for bem-sucedida
+        return { cep, bairro: response.data.bairro || 'Bairro não informado' };
     } catch (error) {
-        console.error(chalk.red(`Erro ao buscar CEP ${cep}: ${error}`));  // Usa o chalk para colorir o erro
-        return 'Erro na busca';
+        console.log(chalk.red(`Erro ao buscar CEP ${cep}: ${error.message}`));
+        contadorErrosConsecutivos++;
+        if (contadorErrosConsecutivos >= MAX_ERROS_CONSECUTIVOS) {
+            console.log(chalk.bgYellowBright.red.bold('Número máximo de erros consecutivos atingido. Encerrando o processo.'));
+            process.exit(1);  // Encerra o processo
+        }
+        return { cep, bairro: 'Erro na busca' };
     }
-};
+}
 
 // Função para processar o arquivo CSV
-const processarArquivo = async (inputFilePath, outputFilePath) => {
-    const ceps = [];
-    const resultados = [];
-
-    // Leitura e processamento do CSV
-    fs.createReadStream(inputFilePath)
-        .pipe(parse({ columns: true, skip_empty_lines: true }))
-        .on('data', async (row) => {
-            if (row.CEP) {
-                ceps.push(row.CEP);
-            }
+function processarCSV() {
+    const results = [];
+    fs.createReadStream(filePath)
+        .pipe(parse({ columns: true }))
+        .on('data', (row) => {
+            results.push(row);
         })
         .on('end', async () => {
-            console.log(`Total de CEPs para buscar: ${ceps.length}`);
+            console.log(chalk.yellow(`Total de CEPs a serem analisados: ${results.length}`)); // Exibe o número de CEPs no início
 
-            // Processa os CEPs em lotes
-            for (let i = 0; i < ceps.length; i += 500) { // Processa em lotes de 500
-                const lote = ceps.slice(i, i + 500);
-                for (const cep of lote) {
-                    const bairro = await buscarBairro(cep);
-                    resultados.push({ CEP: cep, Bairro: bairro });
-                    if (bairro === 'Não encontrado' || bairro === 'Erro na busca') {
-                        console.log(chalk.red(`CEP: ${cep}, Bairro: ${bairro}`));  // Exibe em vermelho se não encontrado
-                    } else {
-                        console.log(`CEP: ${cep}, Bairro: ${bairro}`);
-                    }
-                    
-                    // Adiciona um delay de 1000ms (1 segundo) entre as requisições
-                    await delay(1000);
-                }
+            for (const row of results) {
+                const { CEP } = row;
+                const resultado = await buscarCep(CEP);
+                console.log(chalk.green(`CEP: ${resultado.cep}, Bairro: ${resultado.bairro}`));
             }
-
-            // Gera o arquivo CSV de saída
-            stringify(resultados, { header: true, columns: ['CEP', 'Bairro'] }, (err, output) => {
-                if (err) {
-                    console.error(`Erro ao gerar CSV: ${err}`);
-                    return;
-                }
-                fs.writeFileSync(outputFilePath, output);
-                console.log(`Arquivo CSV gerado com sucesso: ${outputFilePath}`);
-            });
+            console.log(chalk.blue('Processamento concluído.'));
+        })
+        .on('error', (error) => {
+            console.log(chalk.red(`Erro ao ler o arquivo CSV: ${error.message}`));
         });
-};
+}
 
-// Substitua pelos caminhos reais dos arquivos
-const inputFilePath = 'input.csv';
-const outputFilePath = 'output.csv';
-
-// Inicia o processamento
-processarArquivo(inputFilePath, outputFilePath);
+// Iniciar o processamento do CSV
+processarCSV();
