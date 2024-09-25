@@ -1,13 +1,13 @@
 # Meu Primeiro App
 
-Bem-vindo ao **Meu Primeiro App**! Este projeto é uma ferramenta desenvolvida para buscar informações sobre CEPs e exibir os bairros correspondentes a cada um. É um marco no meu aprendizado de JavaScript e desenvolvimento web.
+Bem-vindo ao Meu Primeiro App! Este projeto é uma ferramenta que permite buscar informações sobre CEPs e exibir os bairros correspondentes. É um marco significativo no meu aprendizado de JavaScript e desenvolvimento web, consolidando habilidades em manipulação de dados e integração de APIs.
 
 ## Funcionalidades
 
-- Busca de informações de CEP utilizando uma API.
-- Processa uma planilha CSV com CEPs.
-- Gera um novo arquivo CSV com os bairros correspondentes.
-- Exibe mensagens no terminal para facilitar o acompanhamento do processo.
+- Busca de Informações de CEP: Realiza consultas em tempo real utilizando APIs confiáveis.
+- Processamento de Planilhas CSV: Lê uma planilha CSV contendo CEPs, facilitando a entrada de dados.
+- Geração de Arquivo CSV: Cria um novo arquivo CSV com os bairros correspondentes aos CEPs consultados.
+- Mensagens no Terminal: Exibe feedback visual no terminal, tornando o acompanhamento do processo mais intuitivo.
 
 ## Tecnologias Utilizadas
 
@@ -35,8 +35,7 @@ Bem-vindo ao **Meu Primeiro App**! Este projeto é uma ferramenta desenvolvida p
    `node index.js`
 
 Contribuições
-Sinta-se à vontade para contribuir com este projeto! Qualquer feedback é bem-vindo.
+Sinta-se à vontade para contribuir com este projeto! Qualquer feedback, sugestões ou melhorias são bem-vindos.
 
 Licença
-Este projeto é licenciado sob a Licença MIT.
-  Você pode ajustar as seções conforme necessário, adicionar mais detalhes sobre como o projeto funciona ou qualquer outra informação que considere relevante!
+Este projeto é licenciado sob a Licença MIT. Sinta-se à vontade para ajustar as seções conforme necessário e adicionar mais detalhes que considere relevantes!
