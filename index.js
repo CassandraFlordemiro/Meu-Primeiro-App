@@ -10,18 +10,62 @@ const filePath = './input.csv';
 const MAX_ERROS_CONSECUTIVOS = 5;
 let contadorErrosConsecutivos = 0;
 
-// Função para buscar o CEP
-async function buscarCep(cep) {
+// Variável para armazenar a API escolhida
+let apiEscolhida = null;
+
+// Função para verificar se a API está online
+async function isApiOnline(url) {
     try {
-        const response = await axios.get(`https://viacep.com.br/ws/${cep}/json/`);
-        if (response.data.erro) {
-            console.log(chalk.red(`CEP: ${cep} não encontrado.`));
+        const response = await axios.get(url);
+        return response.status === 200;
+    } catch (error) {
+        return false;
+    }
+}
+
+// Função para selecionar qual API será utilizada
+async function selecionarApi() {
+    // Testa ViaCep primeiro
+    const viaCepOnline = await isApiOnline('https://viacep.com.br/ws/01001000/json/');
+    if (viaCepOnline) {
+        apiEscolhida = 'ViaCep';
+        console.log(chalk.blue('API selecionada: ViaCep'));
+        return;
+    }
+
+    // Se ViaCep estiver offline, testa BrasilAPI
+    const brasilApiOnline = await isApiOnline('https://brasilapi.com.br/api/cep/v2/01001000');
+    if (brasilApiOnline) {
+        apiEscolhida = 'BrasilAPI';
+        console.log(chalk.blue('API selecionada: BrasilAPI'));
+        return;
+    }
+
+    // Se ambas APIs estiverem offline, encerra o processo
+    console.log(chalk.bgYellowBright.red.bold('Nenhuma API está disponível no momento. Encerrando o processo.'));
+    process.exit(1); // Encerra o processo se ambas as APIs estiverem offline
+}
+
+// Função para buscar o CEP utilizando a API selecionada
+async function buscarCep(cep) {
+    let url;
+
+    if (apiEscolhida === 'ViaCep') {
+        url = `https://viacep.com.br/ws/${cep}/json/`;
+    } else if (apiEscolhida === 'BrasilAPI') {
+        url = `https://brasilapi.com.br/api/cep/v2/${cep}`;
+    }
+
+    try {
+        const response = await axios.get(url);
+        if (apiEscolhida === 'ViaCep' && response.data.erro) {
+            console.log(chalk.red(`CEP: ${cep} não encontrado no ViaCep.`));
             return { cep, bairro: 'CEP não encontrado' };
         }
         contadorErrosConsecutivos = 0;  // Reseta o contador de erros quando a busca for bem-sucedida
-        return { cep, bairro: response.data.bairro || 'Bairro não informado' };
+        return { cep, bairro: response.data.neighborhood || 'Bairro não informado' };
     } catch (error) {
-        console.log(chalk.red(`Erro ao buscar CEP ${cep}: ${error.message}`));
+        console.log(chalk.red(`Erro ao buscar CEP ${cep} na API ${apiEscolhida}: ${error.message}`));
         contadorErrosConsecutivos++;
         if (contadorErrosConsecutivos >= MAX_ERROS_CONSECUTIVOS) {
             console.log(chalk.bgYellowBright.red.bold('Número máximo de erros consecutivos atingido. Encerrando o processo.'));
@@ -32,7 +76,10 @@ async function buscarCep(cep) {
 }
 
 // Função para processar o arquivo CSV
-function processarCSV() {
+async function processarCSV() {
+    // Seleciona a API a ser usada no início do processo
+    await selecionarApi();
+
     const results = [];
     fs.createReadStream(filePath)
         .pipe(parse({ columns: true }))
