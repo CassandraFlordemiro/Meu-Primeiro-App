@@ -1,10 +1,12 @@
 import fs from 'fs';
 import { parse } from 'csv-parse';
+import { stringify } from 'csv-stringify'; // Importa o csv-stringify
 import axios from 'axios';
 import chalk from 'chalk';
 
 // Define o caminho correto para o arquivo CSV
 const filePath = './input.csv';
+const outputPath = './output.csv'; // Caminho do arquivo de saída
 
 // Variável para controlar o número máximo de erros consecutivos permitidos
 const MAX_ERROS_CONSECUTIVOS = 5;
@@ -62,18 +64,21 @@ async function buscarCep(cep) {
             console.log(chalk.red(`CEP: ${cep} não encontrado no ViaCep.`));
             return { cep, bairro: 'CEP não encontrado' };
         }
-        contadorErrosConsecutivos = 0;  // Reseta o contador de erros quando a busca for bem-sucedida
+        contadorErrosConsecutivos = 0; // Reseta o contador de erros quando a busca for bem-sucedida
         return { cep, bairro: response.data.neighborhood || 'Bairro não informado' };
     } catch (error) {
         console.log(chalk.red(`Erro ao buscar CEP ${cep} na API ${apiEscolhida}: ${error.message}`));
         contadorErrosConsecutivos++;
         if (contadorErrosConsecutivos >= MAX_ERROS_CONSECUTIVOS) {
             console.log(chalk.bgYellowBright.red.bold('Número máximo de erros consecutivos atingido. Encerrando o processo.'));
-            process.exit(1);  // Encerra o processo
+            process.exit(1); // Encerra o processo
         }
         return { cep, bairro: 'Erro na busca' };
     }
 }
+
+// Array para armazenar os resultados
+const resultados = [];
 
 // Função para processar o arquivo CSV
 async function processarCSV() {
@@ -93,11 +98,27 @@ async function processarCSV() {
                 const { CEP } = row;
                 const resultado = await buscarCep(CEP);
                 console.log(chalk.green(`CEP: ${resultado.cep}, Bairro: ${resultado.bairro}`));
+                resultados.push(resultado); // Adiciona o resultado ao array
             }
             console.log(chalk.blue('Processamento concluído.'));
+            
+            // Gera o arquivo CSV com os resultados
+            gerarCSV();
         })
         .on('error', (error) => {
             console.log(chalk.red(`Erro ao ler o arquivo CSV: ${error.message}`));
+        });
+}
+
+// Função para gerar o arquivo CSV com os resultados
+function gerarCSV() {
+    stringify(resultados, { header: true })
+        .pipe(fs.createWriteStream(outputPath))
+        .on('finish', () => {
+            console.log(chalk.green(`Arquivo de saída gerado: ${outputPath}`));
+        })
+        .on('error', (error) => {
+            console.log(chalk.red(`Erro ao gerar o arquivo CSV: ${error.message}`));
         });
 }
 
